@@ -114,6 +114,23 @@ client.on('messageCreate', message => {
         
     }
 
+    //Coin leaderbord
+    if ((messageParts.length == 2 && messageParts[1] == "top") || (messageParts.length == 3 && messageParts[1] == "top" &&  !isNaN(parseInt(messageParts[2]))) ) {
+        if (messageParts.length == 2) {
+            messageParts.push("5")
+        }
+        const numberOfLeadersToShow = parseInt(messageParts[2])
+        const leaders = moneyRecordDatabase.getLeaderBordRangeFromHighest(numberOfLeadersToShow)
+        
+        let messageContent = `The current top ${leaders.length} are:`
+        let counter = 1
+        leaders.map(x => {
+            messageContent += `\n${counter}. <@${x.userId}> at ${x.currentBalance}`
+            counter ++
+        })
+        message.reply("A").then(x => x.edit(messageContent))
+    }
+
 })
 
 function getUserId(fullMention: string): string {

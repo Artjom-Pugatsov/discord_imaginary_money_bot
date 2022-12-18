@@ -126,6 +126,9 @@ export class MoneyRecordDatabase{
 
     public getLeaderBordRangeFromHighest(numberOfTopToShow: number): MoneyRecord[] {
         const toShowNumber = Math.min(numberOfTopToShow, this.recordBook.length)
-        return this.recordBook.sort(x => -x.currentBalance).slice(0, toShowNumber)
+        const copyOfRecordBook = this.recordBook.map(x =>x)
+        copyOfRecordBook.sort((a, b) => -( a.currentBalance - b.currentBalance))
+        return copyOfRecordBook.slice(0, toShowNumber)
     }
+
 }
