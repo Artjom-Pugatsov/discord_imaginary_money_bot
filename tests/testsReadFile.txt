@@ -1,4 +1,1 @@
-Alex 100
-Bob 23
-Alice 55
-dgsa#678 89
+[{"userId":"Alex","currentBalance":100},{"userId":"Bob","currentBalance":23},{"userId":"Alice","currentBalance":55},{"userId":"dgsa#678","currentBalance":89}]

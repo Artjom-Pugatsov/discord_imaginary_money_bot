@@ -1,6 +1,7 @@
 import { MoneyRecord } from "./Record"
 import { CheckUserInServer, CheckUserIsOwner} from "./ServerValidator"
 import { PathOrFileDescriptor, readFileSync, writeFileSync } from 'fs';
+import { json } from "stream/consumers";
 
 export class MoneyRecordDatabase{
 
@@ -15,17 +16,11 @@ export class MoneyRecordDatabase{
     }
 
     public static readDataFile(filepath: string, checkUserOnServer: CheckUserInServer, checkUserIsOwner: CheckUserIsOwner): MoneyRecordDatabase {
-        const fullfile = readFileSync(filepath as PathOrFileDescriptor, 'utf-8');
-        const lines = fullfile.split('\n');
-        const records: MoneyRecord[] = []
-        lines.forEach(x => {
-            
-            const transformedString = MoneyRecord.fromString(x)
-            if (transformedString != null) {
-              records.push(transformedString)  
-            }
-        })
-        return new MoneyRecordDatabase(records, checkUserOnServer, checkUserIsOwner)
+
+        const data = JSON.parse(readFileSync(filepath, 'utf-8')) as MoneyRecord[]
+        const parsed_data = data.map(x => new MoneyRecord(x.userId, x.currentBalance))
+
+        return new MoneyRecordDatabase(parsed_data, checkUserOnServer, checkUserIsOwner)
 
     }
 
@@ -36,11 +31,7 @@ export class MoneyRecordDatabase{
     }
 
     public writeDataFile(filepath: string, ): void {
-        let towrite = "";
-        if (this.recordBook.length != 0) {
-           towrite = this.recordBook.map(x => x.asString()).reduce((x, y) => x +"\n" + y) 
-        }
-        writeFileSync(filepath as PathOrFileDescriptor, towrite)
+        writeFileSync(filepath, JSON.stringify(this.recordBook))
     }
 
    /**

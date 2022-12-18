@@ -15,6 +15,8 @@ const client = new Client({
 let userInServerValidator: CheckUserInServer;
 let checkUserIsOwnerValidator: CheckUserIsOwner;
 
+
+
 checkUserIsOwnerValidator = function(potentialOwnerId: string) {
     let serverId = process.env.SERVERID
     if (serverId == null) {

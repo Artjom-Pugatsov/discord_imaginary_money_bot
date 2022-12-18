@@ -1,4 +1,1 @@
-Buritto 1
-Jack 0.88
-Jacob 3244234
-da#678 -1
+[{"userId":"Buritto","currentBalance":1},{"userId":"Jack","currentBalance":0.88},{"userId":"Jacob","currentBalance":3244234},{"userId":"da#678","currentBalance":-1}]
