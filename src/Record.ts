@@ -3,6 +3,7 @@ export class MoneyRecord {
 
     userId: string
     currentBalance: number
+    lastTimeFreeRewardTaken: number = 0
 
     constructor(userId: string, currentBalance: number) {
       this.userId = userId;

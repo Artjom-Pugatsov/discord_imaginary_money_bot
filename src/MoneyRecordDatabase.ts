@@ -3,6 +3,9 @@ import { CheckUserInServer, CheckUserIsOwner} from "./ServerValidator"
 import { PathOrFileDescriptor, readFileSync, writeFileSync } from 'fs';
 import { json } from "stream/consumers";
 
+export class freeMoneyRewardData {
+    constructor(public isSucessfullyTaken: boolean, public nextRewardIn: number) {}
+}
 export class MoneyRecordDatabase{
 
     recordBook: MoneyRecord[]
@@ -15,10 +18,35 @@ export class MoneyRecordDatabase{
         this.checkUserIsOwner = checkUserIsOwner
     }
 
+    public takeFreeMoneyReward(userId: string) {
+        this.addUserIfNotExistsAndInServer(userId)
+        const timeRighNow = Date.now()
+        const userFound = this.recordBook.find(x => x.userId == userId)
+        if (userFound == undefined) {
+            //Should never happen
+            return new freeMoneyRewardData(false, 0)
+        }
+        const envRewardAmount = parseInt(process.env.REWARDAMOUNT || '')
+        const RewardAmount = Number.isInteger(envRewardAmount) ? envRewardAmount : 10
+        const envTimeToNextReward = parseInt(process.env.REWARDPERIOD || '')
+        const timeToNextReward = Number.isInteger(envTimeToNextReward) ? envTimeToNextReward : 7200000
+        if (timeRighNow - userFound.lastTimeFreeRewardTaken >  timeToNextReward) {
+            userFound.currentBalance += RewardAmount
+            userFound.lastTimeFreeRewardTaken = timeRighNow
+            return new freeMoneyRewardData(true, timeToNextReward)
+        } else {
+            return new freeMoneyRewardData(false, timeToNextReward - (timeRighNow - userFound.lastTimeFreeRewardTaken))
+        }
+    }
+
     public static readDataFile(filepath: string, checkUserOnServer: CheckUserInServer, checkUserIsOwner: CheckUserIsOwner): MoneyRecordDatabase {
 
         const data = JSON.parse(readFileSync(filepath, 'utf-8')) as MoneyRecord[]
-        const parsed_data = data.map(x => new MoneyRecord(x.userId, x.currentBalance))
+        const parsed_data = data.map(x => {
+            let record = new MoneyRecord(x.userId, x.currentBalance)
+            record.lastTimeFreeRewardTaken = x.lastTimeFreeRewardTaken
+            return record
+        })
 
         return new MoneyRecordDatabase(parsed_data, checkUserOnServer, checkUserIsOwner)
 
@@ -100,5 +128,4 @@ export class MoneyRecordDatabase{
         const toShowNumber = Math.min(numberOfTopToShow, this.recordBook.length)
         return this.recordBook.sort(x => -x.currentBalance).slice(0, toShowNumber)
     }
-
 }

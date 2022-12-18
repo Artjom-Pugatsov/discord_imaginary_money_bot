@@ -99,7 +99,19 @@ client.on('messageCreate', message => {
         if (2 == messageParts.length ) {
             messageParts.push(message.author.id)
         }
-        message.reply(`<@${getUserId(messageParts[2])}>'s balance is ${moneyRecordDatabase.getCoinAmount(getUserId(messageParts[2]))}`)
+        message.reply(`<@${getUserId(messageParts[2])}>'s balance is ${moneyRecordDatabase.getCoinAmount(getUserId(messageParts[2]))} <:den_dobre:891762619193634876>`)
+    }
+
+    //Take reward
+    if ((messageParts.length == 2 && messageParts[1] == "reward")) {
+        const infoAboutReward = moneyRecordDatabase.takeFreeMoneyReward(message.author.id)
+        const retIn = msToTime(infoAboutReward.nextRewardIn)
+        if (infoAboutReward.isSucessfullyTaken) {
+            message.reply(`You have collected your reward <:Artjom_pog:973178773694455841>! Your new balance is ${moneyRecordDatabase.getCoinAmount(message.author.id)}. Return in ${retIn}`)
+        } else {
+            message.reply(`Be a bit more paitent, you can collect your reward in ${retIn}`)
+        }
+        
     }
 
 })
@@ -107,5 +119,15 @@ client.on('messageCreate', message => {
 function getUserId(fullMention: string): string {
     return fullMention.replaceAll(/\D/g,'');
 }
+
+function msToTime(duration: number): string {
+    const milliseconds = Math.floor((duration % 1000) / 100)
+    const seconds = Math.floor((duration / 1000) % 60)
+    const minutes = Math.floor((duration / (1000 * 60)) % 60)
+    const hours = Math.floor((duration / (1000 * 60 * 60)) % 24);
+
+    return `${hours} hours ${minutes} minutes ${seconds} seconds `;
+  }
+
 
 client.login(process.env.TOKEN)
