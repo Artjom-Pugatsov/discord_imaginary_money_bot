@@ -175,6 +175,19 @@ client.on('messageCreate', message => {
         message.reply(`<@${getUserId(messageParts[2])}>, you have been challanged to a duel. Reply to the original message with : \"<@${client.user.id}> accept ${messageParts[3]}\" to accept the duel`)
     }
 
+    //Get list of possible commands
+    if (messageParts.length == 2 && messageParts[1] == "help") {
+        
+        let infoMessage = `To use a command, please mention <@${client.user.id}> and then type one of the following commands:\n`
+        infoMessage += `**reward** - to collet your free money\n`
+        infoMessage += `**help** - to list the available commands\n`
+        infoMessage += `**balance <user>** - to check user's balance\n`
+        infoMessage += `**top <x>** - to see the top users by coins\n`
+        infoMessage += `**transfer <user> <x>** - to transfer x coins to the specified user\n`
+        infoMessage += `**duel <user> <x>** - to challange a user to a random duel by betting x coins\n`
+        message.reply(infoMessage)
+    }
+
 })
 
 function getUserId(fullMention: string): string {
