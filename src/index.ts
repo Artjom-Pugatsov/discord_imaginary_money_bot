@@ -125,7 +125,12 @@ client.on('messageCreate', message => {
         
         let messageContent = `The current top ${leaders.length} are:`
         let counter = 1
+        let previousValue = -1
         leaders.map(x => {
+            if (x.currentBalance == previousValue) {
+                counter --
+            }
+            previousValue = x.currentBalance
             messageContent += `\n${counter}. <@${x.userId}> at ${x.currentBalance}`
             counter ++
         })
