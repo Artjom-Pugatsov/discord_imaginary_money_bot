@@ -144,22 +144,35 @@ client.on('messageCreate', message => {
             const invitationParts = originalBattleInvetation.split(" ").map(x => x.toLowerCase())
             const isAccepterSame = message.author.id == getUserId(invitationParts[2])
             const isAmountSame = !isNaN(parseFloat(invitationParts[3])) && parseFloat(invitationParts[3]) == parseFloat(messageParts[2])
-            if (client.user != null && invitationParts.length == 4 && x.mentions.has(client.user.id) && invitationParts[1] == "duel" && isAccepterSame && isAmountSame) {
-                let gameAmount = Math.max(0, parseFloat(invitationParts[3]))
-                gameAmount = Math.min(gameAmount, moneyRecordDatabase.getCoinAmount(message.author.id), moneyRecordDatabase.getCoinAmount(x.author.id))
-                let result = new DuelManager().battle(message.author.id, x.author.id, gameAmount)
-                if (result.outcomeCode == 1) {
-                    moneyRecordDatabase.addCoinsBypassOwnerCheck(message.author.id, gameAmount)
-                    moneyRecordDatabase.addCoinsBypassOwnerCheck(x.author.id, -gameAmount)
-                } else if (result.outcomeCode == 2) {
-                    moneyRecordDatabase.addCoinsBypassOwnerCheck(x.author.id, gameAmount)
-                    moneyRecordDatabase.addCoinsBypassOwnerCheck(message.author.id, -gameAmount)
+            //The cache has to be cleared, because otherwise not all reactions show-up
+            x.channel.messages.cache.delete(x.id);
+            x.reactions.cache.clear()
+            x.fetch().then(x => {
+                if (client.user != null && invitationParts.length == 4 && x.mentions.has(client.user.id) && invitationParts[1] == "duel" && isAccepterSame && isAmountSame && (x.reactions.resolve('👍')?.count == undefined || x.reactions.resolve('👍')?.count == 0)) {
+                
+                    let gameAmount = Math.max(0, parseFloat(invitationParts[3]))
+                    gameAmount = Math.min(gameAmount, moneyRecordDatabase.getCoinAmount(message.author.id), moneyRecordDatabase.getCoinAmount(x.author.id))
+                    let result = new DuelManager().battle(message.author.id, x.author.id, gameAmount)
+                    if (result.outcomeCode == 1) {
+                        moneyRecordDatabase.addCoinsBypassOwnerCheck(message.author.id, gameAmount)
+                        moneyRecordDatabase.addCoinsBypassOwnerCheck(x.author.id, -gameAmount)
+                    } else if (result.outcomeCode == 2) {
+                        moneyRecordDatabase.addCoinsBypassOwnerCheck(x.author.id, gameAmount)
+                        moneyRecordDatabase.addCoinsBypassOwnerCheck(message.author.id, -gameAmount)
+                    }
+                    result.outcomeText += ` <@${x.author.id}>'s balance is now ${moneyRecordDatabase.getCoinAmount(x.author.id)} and <@${message.author.id}>'s balance is now ${moneyRecordDatabase.getCoinAmount(message.author.id)}`
+                    message.reply(result.outcomeText)
+                    x.react("👍")
                 }
-                result.outcomeText += ` <@${x.author.id}>'s balance is now ${moneyRecordDatabase.getCoinAmount(x.author.id)} and <@${message.author.id}>'s balance is now ${moneyRecordDatabase.getCoinAmount(message.author.id)}`
-                message.reply(result.outcomeText)
             }
+            )
             
         })
+    }
+
+    //Initiate the duel
+    if (messageParts.length == 4 && messageParts[1] == "duel" && userInServerValidator(getUserId(messageParts[2])) && !isNaN(parseFloat(messageParts[3]))) {
+        message.reply(`<@${getUserId(messageParts[2])}>, you have been challanged to a duel. Reply to the original message with : \"<@${client.user.id}> accept ${messageParts[3]}\" to accept the duel`)
     }
 
 })
