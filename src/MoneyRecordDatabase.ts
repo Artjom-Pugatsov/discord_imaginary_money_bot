@@ -82,6 +82,16 @@ export class MoneyRecordDatabase{
         return 0
     }
 
+    public addCoinsBypassOwnerCheck(userId: string, toAddMoney: number): number {
+        this.addUserIfNotExistsAndInServer(userId)
+        const userFound = this.recordBook.find(x => x.userId == userId)
+        if (userFound != null && userFound != undefined) {
+            userFound.currentBalance += toAddMoney
+            return userFound.currentBalance
+        }
+        return 0
+    }
+
     public setCoins(requastFormId: string, userId: string, toAddMoney: number): number {
         if (!this.checkUserIsOwner(requastFormId)) {
             return 0

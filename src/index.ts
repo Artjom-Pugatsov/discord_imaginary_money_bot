@@ -3,6 +3,7 @@ import {CheckUserInServer, CheckUserIsOwner} from "src/ServerValidator";
 require("dotenv/config")
 import {MoneyRecord} from "./Record"
 import { MoneyRecordDatabase } from "./MoneyRecordDatabase";
+import { DuelManager } from "./DuelManager";
 
 const client = new Client({
         intents: [
@@ -129,6 +130,31 @@ client.on('messageCreate', message => {
             counter ++
         })
         message.reply("A").then(x => x.edit(messageContent))
+    }
+
+    //Duel for coins
+    if (messageParts.length == 3 && messageParts[1] == "accept" && !isNaN(parseFloat(messageParts[2]))) {
+        message.fetchReference().then(x => {
+            const originalBattleInvetation = x.content
+            const invitationParts = originalBattleInvetation.split(" ").map(x => x.toLowerCase())
+            const isAccepterSame = message.author.id == getUserId(invitationParts[2])
+            const isAmountSame = !isNaN(parseFloat(invitationParts[3])) && parseFloat(invitationParts[3]) == parseFloat(messageParts[2])
+            if (client.user != null && invitationParts.length == 4 && x.mentions.has(client.user.id) && invitationParts[1] == "duel" && isAccepterSame && isAmountSame) {
+                let gameAmount = Math.max(0, parseFloat(invitationParts[3]))
+                gameAmount = Math.min(gameAmount, moneyRecordDatabase.getCoinAmount(message.author.id), moneyRecordDatabase.getCoinAmount(x.author.id))
+                let result = new DuelManager().battle(message.author.id, x.author.id, gameAmount)
+                if (result.outcomeCode == 1) {
+                    moneyRecordDatabase.addCoinsBypassOwnerCheck(message.author.id, gameAmount)
+                    moneyRecordDatabase.addCoinsBypassOwnerCheck(x.author.id, -gameAmount)
+                } else if (result.outcomeCode == 2) {
+                    moneyRecordDatabase.addCoinsBypassOwnerCheck(x.author.id, gameAmount)
+                    moneyRecordDatabase.addCoinsBypassOwnerCheck(message.author.id, -gameAmount)
+                }
+                result.outcomeText += ` <@${x.author.id}>'s balance is now ${moneyRecordDatabase.getCoinAmount(x.author.id)} and <@${message.author.id}>'s balance is now ${moneyRecordDatabase.getCoinAmount(message.author.id)}`
+                message.reply(result.outcomeText)
+            }
+            
+        })
     }
 
 })
