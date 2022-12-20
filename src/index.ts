@@ -47,6 +47,7 @@ userInServerValidator = function(userId: string): boolean {
 //Read the data into memory
 const moneyRecordDatabase = MoneyRecordDatabase.readDataFile("data.txt", userInServerValidator, checkUserIsOwnerValidator)
 let pollsRightNow = Poll.readPollsFromFile("polldata.txt")
+Poll.latestId = pollsRightNow.map(x => x.pollId).reduce((x, y) => Math.max(x, y), 1) + 1
 
 //Create a one-time backup
 moneyRecordDatabase.writeDataFile("dataArchive\\data" + Date.now().toString() + "txt")

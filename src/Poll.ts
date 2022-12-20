@@ -5,7 +5,7 @@ export class Poll {
     question: string
     bets: Bet[] = []
     pollId: number
-    private static latestId = 1;
+    static latestId = 1;
     pollStatus: string = "OPEN";
     winningOption: number = -1;
     constructor(optionNames: string[], question: string) {
@@ -63,13 +63,16 @@ export class Poll {
         })
         const totalAmountOfWinningOption = this.bets.filter(x => x.option == winningOption).map(x => x.amount).reduce((x, y) => x + y, 0)
         
-        const userGetsAmount = userWinningBetPairs.map(x => {
+        let userGetsAmount = userWinningBetPairs.map(x => {
             const toRet: [string, number] = [x[0], x[1]/totalAmountOfWinningOption * totalAmount]
             if (isNaN(toRet[1])) {
                 toRet[1] = 0
             }
             return toRet
         })
+        if (totalAmountOfWinningOption == 0) {
+            userGetsAmount = this.getUserHasBetTotal()
+        }
         return userGetsAmount
     }
 
