@@ -17,7 +17,6 @@ const client = new Client({
 let userInServerValidator: CheckUserInServer;
 let checkUserIsOwnerValidator: CheckUserIsOwner;
 
-let pollsRightNow: Poll[] = []
 
 checkUserIsOwnerValidator = function(potentialOwnerId: string) {
     let serverId = process.env.SERVERID
@@ -47,6 +46,7 @@ userInServerValidator = function(userId: string): boolean {
 
 //Read the data into memory
 const moneyRecordDatabase = MoneyRecordDatabase.readDataFile("data.txt", userInServerValidator, checkUserIsOwnerValidator)
+let pollsRightNow = Poll.readPollsFromFile("polldata.txt")
 
 //Create a one-time backup
 moneyRecordDatabase.writeDataFile("dataArchive\\data" + Date.now().toString() + "txt")
@@ -55,6 +55,7 @@ moneyRecordDatabase.writeDataFile("dataArchive\\data" + Date.now().toString() + 
 
 setInterval(function() {
     moneyRecordDatabase.writeDataFile("data.txt")
+    Poll.writePollsToFile("polldata.txt", pollsRightNow)
 }, 60 * 1000); 
 
 

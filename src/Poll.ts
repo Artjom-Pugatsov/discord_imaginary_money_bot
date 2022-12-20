@@ -1,9 +1,11 @@
+import { readFileSync, writeFileSync } from "fs";
+
 export class Poll {
     optionNames: string[] = []
     question: string
     bets: Bet[] = []
     pollId: number
-    static latestId = 1;
+    private static latestId = 1;
     pollStatus: string = "OPEN";
     winningOption: number = -1;
     constructor(optionNames: string[], question: string) {
@@ -11,6 +13,16 @@ export class Poll {
         this.question = question
         this.pollId = Poll.latestId
         Poll.latestId ++
+    }
+
+    public static rebuildPollFromData(optionNames: string[], question: string, bets: Bet[], pollId: number, pollStatus: string, winningOption: number) {
+        const toRet = new Poll(optionNames, question)
+        Poll.latestId --;
+        toRet.bets = bets;
+        toRet.pollId = pollId;
+        toRet.pollStatus = pollStatus
+        toRet.winningOption = winningOption
+        return toRet
     }
 
     public makeABet(bet: Bet) {
@@ -97,8 +109,19 @@ export class Poll {
             return haveSpent.concat(wasGivenBack)
         }
     }
+public static writePollsToFile(filePath: string, polls:Poll[]) {
+    writeFileSync(filePath, JSON.stringify(polls))
+}
 
-
+public static readPollsFromFile(filePath: string): Poll[] {
+    const data = JSON.parse(readFileSync(filePath, 'utf-8')) as Poll[]
+    const parsed_data = data.map(x => {
+        let record = Poll.rebuildPollFromData(x.optionNames, x.question, x.bets, x.pollId, x.pollStatus, x.winningOption)
+        record.bets = record.bets.map(x => new Bet(x.option, x.amount, x.user))
+        return record
+    })
+     return parsed_data
+}
 
 }
 
