@@ -1,23 +1,23 @@
-export class Pool {
+export class Poll {
     optionNames: string[] = []
     question: string
     bets: Bet[] = []
-    poolId: number
+    pollId: number
     static latestId = 1;
-    poolStatus: string = "OPEN";
+    pollStatus: string = "OPEN";
     winningOption: number = -1;
     constructor(optionNames: string[], question: string) {
         this.optionNames = optionNames
         this.question = question
-        this.poolId = Pool.latestId
-        Pool.latestId ++
+        this.pollId = Poll.latestId
+        Poll.latestId ++
     }
 
     public makeABet(bet: Bet) {
         this.bets.push(bet)
     }
 
-    public getTotalPoolAmount(): number {
+    public getTotalPollAmount(): number {
         return Math.max(0.0000001, this.bets.map(x => x.amount).reduce((x, y) => x+y, 0))
     }
 
@@ -36,7 +36,7 @@ export class Pool {
     }
 
     public resolveBet(winningOption: number): [string, number][] {
-        const totalAmount = this.getTotalPoolAmount()
+        const totalAmount = this.getTotalPollAmount()
         const winningBets = this.bets.filter(x => x.option == winningOption)
         const allUsersIn = [...new Set(this.bets.map(x => x.user))]
         const userWinningBetPairs = allUsersIn.map(x => {
@@ -78,11 +78,15 @@ export class Pool {
 
     public markAsClosed(winningOption: number) {
         this.winningOption = winningOption;
-        this.poolStatus = "CLOSED";
+        this.pollStatus = "CLOSED";
+    }
+
+    public markAsLocked() {
+        this.pollStatus = "LOCKED";
     }
 
     public giveBackWhenUndone(): [string, number][] {
-        if (this.poolStatus == "OPEN") {
+        if (this.pollStatus != "CLOSED") {
             return this.getUserHasBetTotal()
         } else {
             const haveSpent = this.getUserHasBetTotal()

@@ -4,7 +4,7 @@ require("dotenv/config")
 import {MoneyRecord} from "./Record"
 import { MoneyRecordDatabase } from "./MoneyRecordDatabase";
 import { DuelManager } from "./DuelManager";
-import { Bet, Pool } from "./Pool";
+import { Bet, Poll } from "./Poll";
 
 const client = new Client({
         intents: [
@@ -17,7 +17,7 @@ const client = new Client({
 let userInServerValidator: CheckUserInServer;
 let checkUserIsOwnerValidator: CheckUserIsOwner;
 
-let poolsRightNow: Pool[] = []
+let pollsRightNow: Poll[] = []
 
 checkUserIsOwnerValidator = function(potentialOwnerId: string) {
     let serverId = process.env.SERVERID
@@ -189,18 +189,18 @@ client.on('messageCreate', message => {
         infoMessage += `\`top <x>\` - to see the top users by coins\n`
         infoMessage += `\`transfer <user> <x>\` - to transfer x coins to the specified user\n`
         infoMessage += `\`duel <user> <x>\` - to challange a user to a random duel by betting x coins\n`
-        infoMessage += `\nPool commands:\n`
-        infoMessage += `\`add pool <name> <option1> <option2> ...\` - to add a pool\n`
-        infoMessage += `\`bet pool<poolid> opt<optionNumber> <x> \` - to place a bet of x in the pool\n`
-        infoMessage += `\`view bets pool<poolid>\` - to view all bets for a pool\n`
-        infoMessage += `\`view pools\` - to view all pools\n`
-        infoMessage += `\`resolve pool<poolid> opt<optionNumber>\` - to resolve a pool (Admin only)\n`
-        infoMessage += `\`undo pool<poolid>\` - to undo a pool (Admin only)\n`
+        infoMessage += `\nPoll commands:\n`
+        infoMessage += `\`add poll <name> <option1> <option2> ...\` - to add a poll\n`
+        infoMessage += `\`bet poll<pollid> opt<optionNumber> <x> \` - to place a bet of x in the poll\n`
+        infoMessage += `\`view bets poll<pollid>\` - to view all bets for a poll\n`
+        infoMessage += `\`view polls\` - to view all polls\n`
+        infoMessage += `\`resolve poll<pollid> opt<optionNumber>\` - to resolve a poll (Admin only)\n`
+        infoMessage += `\`undo poll<pollid>\` - to undo a poll (Admin only)\n`
         message.reply(infoMessage)
     }
 
-    //Create a pool as admin
-    if (messageParts[1] == "add" && messageParts[2] == "pool"&& messageParts.length >= 6) {
+    //Create a poll as admin
+    if (messageParts[1] == "add" && messageParts[2] == "poll"&& messageParts.length >= 6) {
         let counter = 0;
         const substrings = message.content.replaceAll(/\`\`/g, '\` \`').split("\`").filter(x => {
             counter ++
@@ -209,9 +209,9 @@ client.on('messageCreate', message => {
         if (substrings.length >= 3) {
             const options = substrings.slice(1, undefined)
             const question = substrings[0]
-            const addedPool = new Pool(options, question)
-            poolsRightNow.push(addedPool)
-            let toSend = `\`${question}\` -> Pool **${addedPool.poolId}**`
+            const addedPoll = new Poll(options, question)
+            pollsRightNow.push(addedPoll)
+            let toSend = `\`${question}\` -> Poll **${addedPoll.pollId}**`
             counter = 1
             options.forEach(x => {
                 toSend += `\n${counter}. \`${x}\``
@@ -222,98 +222,120 @@ client.on('messageCreate', message => {
     }
 
     //Place a bet
-    if (messageParts.length == 5 && messageParts[1] == "bet" && checkCorrectPoolFormat(messageParts[2]) && checkCorrectOptionFormat(messageParts[3]) && checkStringIsPositiveNumber(messageParts[4])) {
-        console.log("hhhh");
+    if (messageParts.length == 5 && messageParts[1] == "bet" && checkCorrectPollFormat(messageParts[2]) && checkCorrectOptionFormat(messageParts[3]) && checkStringIsPositiveNumber(messageParts[4])) {
         const betAmount = Math.min(moneyRecordDatabase.getCoinAmount(message.author.id), parseFloat(messageParts[4]))
-        const poolId = parseInt(messageParts[2].slice(4, undefined))
-        const poolOption = parseInt(messageParts[3].slice(3, undefined))
-        const poolFound = poolsRightNow.find(x => x.poolId == poolId)
-        if (poolFound == undefined || poolOption > poolFound.optionNames.length || poolFound.poolStatus != "OPEN") {
-            console.log("JJJJ");
-            
+        const pollId = parseInt(messageParts[2].slice(4, undefined))
+        const pollOption = parseInt(messageParts[3].slice(3, undefined))
+        const pollFound = pollsRightNow.find(x => x.pollId == pollId)
+        if (pollFound == undefined || pollOption > pollFound.optionNames.length || pollFound.pollStatus != "OPEN") {
             return 
         }
-        poolFound.makeABet(new Bet(poolOption, betAmount, message.author.id))
+        pollFound.makeABet(new Bet(pollOption, betAmount, message.author.id))
         moneyRecordDatabase.addCoinsBypassOwnerCheck(message.author.id, -betAmount)
         message.react("👍")
     }
 
     //View bets right now
-    if (messageParts.length == 4 && messageParts[1] == "view" && messageParts[2] == "bets" && checkCorrectPoolFormat(messageParts[3])) {
-        const poolId = parseInt(messageParts[3].slice(4, undefined))
-        const poolFound = poolsRightNow.find(x => x.poolId == poolId)
-        if (poolFound == undefined) {
+    if (messageParts.length == 4 && messageParts[1] == "view" && messageParts[2] == "bets" && checkCorrectPollFormat(messageParts[3])) {
+        const pollId = parseInt(messageParts[3].slice(4, undefined))
+        const pollFound = pollsRightNow.find(x => x.pollId == pollId)
+        if (pollFound == undefined) {
             return 
         }
-        const optionNames = poolFound.optionNames
-        const votesPerOption = poolFound.getVotesPerOption()
-        const totalAmount = poolFound.getTotalPoolAmount()
+        const optionNames = pollFound.optionNames
+        const spacesToAdd = addSpacesToMakePrettierDisplayingBetPercentages(optionNames, 5)
+        const votesPerOption = pollFound.getVotesPerOption()
+        const totalAmount = pollFound.getTotalPollAmount()
         let counter = 0
-        let toSend = `\`${poolFound.question}\` -> Pool **${poolFound.poolId}**`
+        let toSend = `\`${pollFound.question}\` -> Poll **${pollFound.pollId}**`
         counter = 1
         optionNames.forEach(x => {
-            toSend += `\n${counter}. \`${x}\`         ${votesPerOption[counter-1][1]}         ${votesPerOption[counter-1][1]/ totalAmount * 100}%`
+            toSend += `\n\`${counter}. ${x}\`${" ".repeat(spacesToAdd[counter-1])}${votesPerOption[counter-1][1]}      ${votesPerOption[counter-1][1]/ totalAmount * 100}%`
             counter ++
         })
         message.reply(toSend)
     }
 
-    //View pools right now
-    if (messageParts.length == 3 && messageParts[1] == "view" && messageParts[2] == "pools") {
-        if (poolsRightNow.length == 0) {
-            message.reply("No pools running right now")
+    //View polls right now
+    if (messageParts.length == 3 && messageParts[1] == "view" && messageParts[2] == "polls") {
+        if (pollsRightNow.length == 0) {
+            message.reply("No polls running right now")
         } else {
         let counter = 0
-        let toSend = `The pools right now are:`
+        let toSend = `The polls right now are:`
         counter = 1
-        poolsRightNow.forEach(x => {
+        pollsRightNow.forEach(x => {
             let openMessage = ''
-            if (x.poolStatus == "OPEN") {
-                openMessage = "Open"
-            } else {
-                openMessage = "Closed"
+            if (x.pollStatus == "OPEN") {
+                openMessage = "Open for bets"
+            } else if (x.pollStatus == "LOCKED") {
+                openMessage = "Closed for bets"
+            } else if (x.pollStatus == "CLOSED") {
+                openMessage = "HasAlreadyResolved"
             }
-            toSend += `\n${counter}. \`${x.question}\` -> Pool **${x.poolId}** ${openMessage}`
+            toSend += `\n${counter}. \`${x.question}\` -> Poll **${x.pollId}** ${openMessage}`
             counter ++
         })
         message.reply(toSend) 
         }
     }
 
-    //Resolve a pool
-    if (messageParts.length == 4 && messageParts[1] == "resolve"  && checkCorrectPoolFormat(messageParts[2]) && checkCorrectOptionFormat(messageParts[3])&& checkUserIsOwnerValidator(message.author.id)) {
-        const poolId = parseInt(messageParts[2].slice(4, undefined))
-        const poolOption = parseInt(messageParts[3].slice(3, undefined))
-        const poolFound = poolsRightNow.find(x => x.poolId == poolId)
-        if (poolFound == undefined || poolOption > poolFound.optionNames.length || poolFound.poolStatus != "OPEN") {
+    //Resolve a poll
+    if (messageParts.length == 4 && messageParts[1] == "resolve"  && checkCorrectPollFormat(messageParts[2]) && checkCorrectOptionFormat(messageParts[3])&& checkUserIsOwnerValidator(message.author.id)) {
+        const pollId = parseInt(messageParts[2].slice(4, undefined))
+        const pollOption = parseInt(messageParts[3].slice(3, undefined))
+        const pollFound = pollsRightNow.find(x => x.pollId == pollId)
+        if (pollFound == undefined || pollOption > pollFound.optionNames.length || pollFound.pollStatus == "CLOSED") {
             return 
         }
-        const results = poolFound.resolveBet(poolOption)
+        let results = pollFound.resolveBet(pollOption)
         results.forEach(x => moneyRecordDatabase.addCoinsBypassOwnerCheck(x[0], x[1]))
-        poolFound.markAsClosed(poolOption)
+        pollFound.markAsClosed(pollOption)
         
-        let toSend = `The pool \`${poolFound.question}\` has concluded with \`${poolFound.optionNames[poolOption-1]}\`. The winners are:`
+        let toSend = `The poll \`${pollFound.question}\` has concluded with \`${pollFound.optionNames[pollOption-1]}\`. The winners are:`
+        results = results.filter(x =>x[1] > 0).sort((x, y) => - x[1] +y[1])
         results.forEach(x => {
             toSend += `\n<@${x[0]}> - ${x[1]}`
         })
         message.channel.send(toSend) 
     }
 
-    //Undo a pool
-    if (messageParts.length == 3 && messageParts[1] == "undo" && checkCorrectPoolFormat(messageParts[2]) && checkUserIsOwnerValidator(message.author.id)) {
-        const poolId = parseInt(messageParts[2].slice(4, undefined))
-        const poolFound = poolsRightNow.find(x => x.poolId == poolId)
-        if (poolFound == undefined) {
+    //Undo a poll
+    if (messageParts.length == 3 && messageParts[1] == "undo" && checkCorrectPollFormat(messageParts[2]) && checkUserIsOwnerValidator(message.author.id)) {
+        const pollId = parseInt(messageParts[2].slice(4, undefined))
+        const pollFound = pollsRightNow.find(x => x.pollId == pollId)
+        if (pollFound == undefined) {
             return 
         }
-        poolsRightNow = poolsRightNow.filter(x => x.poolId != poolFound.poolId)
-        const results = poolFound.giveBackWhenUndone()
+        pollsRightNow = pollsRightNow.filter(x => x.pollId != pollFound.pollId)
+        const results = pollFound.giveBackWhenUndone()
         results.forEach(x => moneyRecordDatabase.addCoinsBypassOwnerCheck(x[0], x[1]))
         
-        let toSend = `The pool \`${poolFound.question}\` has been undone. All spent money was returned`
+        let toSend = `The poll \`${pollFound.question}\` has been undone. All spent money was returned`
         message.channel.send(toSend)
     }
 
+    //Lock a poll
+    if (messageParts.length == 3 && messageParts[1] == "lock" && checkCorrectPollFormat(messageParts[2]) && checkUserIsOwnerValidator(message.author.id)) {
+        const pollId = parseInt(messageParts[2].slice(4, undefined))
+        const pollFound = pollsRightNow.find(x => x.pollId == pollId)
+        if (pollFound == undefined) {
+            return 
+        }
+        pollFound.markAsLocked()
+        let toSend = `The poll \`${pollFound.question}\` has been locked. No more bets can be placed`
+        const optionNames = pollFound.optionNames
+        const spacesToAdd = addSpacesToMakePrettierDisplayingBetPercentages(optionNames, 5)
+        const votesPerOption = pollFound.getVotesPerOption()
+        const totalAmount = pollFound.getTotalPollAmount()
+        let counter = 0
+        counter = 1
+        optionNames.forEach(x => {
+            toSend += `\n\`${counter}. ${x}\`${" ".repeat(spacesToAdd[counter-1])}${votesPerOption[counter-1][1]}      ${votesPerOption[counter-1][1]/ totalAmount * 100}%`
+            counter ++
+        })
+        message.channel.send(toSend)
+    }
 
 })
 
@@ -329,12 +351,17 @@ function checkCorrectOptionFormat(option: string): boolean {
     return (option.slice(0, 3) == "opt" && !isNaN(parseInt(option.slice(3, undefined))) && parseInt(option.slice(3, undefined)) > 0)
 }
 
-function checkCorrectPoolFormat(pool: string): boolean {
-    return (pool.slice(0, 4) == "pool" && !isNaN(parseInt(pool.slice(4, undefined))) && parseInt(pool.slice(4, undefined)) > 0)
+function checkCorrectPollFormat(poll: string): boolean {
+    return (poll.slice(0, 4) == "poll" && !isNaN(parseInt(poll.slice(4, undefined))) && parseInt(poll.slice(4, undefined)) > 0)
 }
 
 function getUserId(fullMention: string): string {
     return fullMention.replaceAll(/\D/g,'');
+}
+
+function addSpacesToMakePrettierDisplayingBetPercentages(questions: string[], spacesAfterMax: number): number[] {
+    const maxLengthOfStrings = questions.map(x => x.length).reduce((x, y) => Math.max(x, y), 0)
+     return questions.map(x => (spacesAfterMax + Math.floor((maxLengthOfStrings - x.length)*11/5)))
 }
 
 function msToTime(duration: number): string {
@@ -344,7 +371,7 @@ function msToTime(duration: number): string {
     const hours = Math.floor((duration / (1000 * 60 * 60)) % 24);
 
     return `${hours} hours ${minutes} minutes ${seconds} seconds `;
-  }
+}
 
 
 client.login(process.env.TOKEN)
