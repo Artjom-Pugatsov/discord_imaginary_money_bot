@@ -248,13 +248,8 @@ client.on('messageCreate', message => {
         const spacesToAdd = addSpacesToMakePrettierDisplayingBetPercentages(optionNames, 5)
         const votesPerOption = pollFound.getVotesPerOption()
         const totalAmount = pollFound.getTotalPollAmount()
-        let counter = 0
         let toSend = `\`${pollFound.question}\` -> Poll **${pollFound.pollId}**`
-        counter = 1
-        optionNames.forEach(x => {
-            toSend += `\n\`${counter}. ${x}\`${" ".repeat(spacesToAdd[counter-1])}${votesPerOption[counter-1][1]}      ${votesPerOption[counter-1][1]/ totalAmount * 100}%`
-            counter ++
-        })
+        toSend = appendVotesPerPollOption(toSend, optionNames, votesPerOption, totalAmount)
         message.reply(toSend)
     }
 
@@ -327,15 +322,9 @@ client.on('messageCreate', message => {
         pollFound.markAsLocked()
         let toSend = `The poll \`${pollFound.question}\` has been locked. No more bets can be placed`
         const optionNames = pollFound.optionNames
-        const spacesToAdd = addSpacesToMakePrettierDisplayingBetPercentages(optionNames, 5)
         const votesPerOption = pollFound.getVotesPerOption()
         const totalAmount = pollFound.getTotalPollAmount()
-        let counter = 0
-        counter = 1
-        optionNames.forEach(x => {
-            toSend += `\n\`${counter}. ${x}\`${" ".repeat(spacesToAdd[counter-1])}${votesPerOption[counter-1][1]}      ${votesPerOption[counter-1][1]/ totalAmount * 100}%`
-            counter ++
-        })
+        toSend = appendVotesPerPollOption(toSend, optionNames, votesPerOption, totalAmount)
         message.channel.send(toSend)
     }
 
@@ -361,6 +350,18 @@ function getUserId(fullMention: string): string {
     return fullMention.replaceAll(/\D/g,'');
 }
 
+function appendVotesPerPollOption(appendTo: string, optionNames: string[], votesPerOption: [number, number][], totalAmount: number): string {
+    const spacesToAdd = addSpacesToMakePrettierDisplayingBetPercentages(optionNames, 5)
+    let counter = 1
+        optionNames.forEach(x => {
+        appendTo += `\n\`${counter}. ${x}\`${" ".repeat(spacesToAdd[counter-1])}`+
+        `${roundToTwoDecimals(votesPerOption[counter-1][1])}      ${roundToTwoDecimals(votesPerOption[counter-1][1]/ totalAmount * 100)}%`
+        counter ++
+    })
+    return appendTo
+
+}
+
 function addSpacesToMakePrettierDisplayingBetPercentages(questions: string[], spacesAfterMax: number): number[] {
     const maxLengthOfStrings = questions.map(x => x.length).reduce((x, y) => Math.max(x, y), 0)
      return questions.map(x => (spacesAfterMax + Math.floor((maxLengthOfStrings - x.length)*11/5)))
@@ -373,6 +374,10 @@ function msToTime(duration: number): string {
     const hours = Math.floor((duration / (1000 * 60 * 60)) % 24);
 
     return `${hours} hours ${minutes} minutes ${seconds} seconds `;
+}
+
+function roundToTwoDecimals(toRound: number): number {
+    return Math.round(toRound * 100) / 100
 }
 
 
