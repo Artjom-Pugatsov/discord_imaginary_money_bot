@@ -48,6 +48,7 @@ userInServerValidator = function(userId: string): boolean {
 const moneyRecordDatabase = MoneyRecordDatabase.readDataFile("data.txt", userInServerValidator, checkUserIsOwnerValidator)
 let pollsRightNow = Poll.readPollsFromFile("polldata.txt")
 Poll.latestId = pollsRightNow.map(x => x.pollId).reduce((x, y) => Math.max(x, y), 1) + 1
+Poll.setToBeLockedAllInTime(pollsRightNow)
 
 //Create a one-time backup
 moneyRecordDatabase.writeDataFile("dataArchive\\data" + Date.now().toString() + "txt")
@@ -99,7 +100,8 @@ client.on('messageCreate', message => {
     }
 
     //Check user's balance
-    if ((messageParts.length == 3 && messageParts[1] == "balance" && userInServerValidator(getUserId(messageParts[2]))) || (messageParts.length == 2 && messageParts[1] == "balance")) {
+    if ((messageParts.length == 3 && messageParts[1] == "balance" &&
+     userInServerValidator(getUserId(messageParts[2]))) || (messageParts.length == 2 && messageParts[1] == "balance")) {
         if (2 == messageParts.length ) {
             messageParts.push(message.author.id)
         }
@@ -109,7 +111,7 @@ client.on('messageCreate', message => {
     //Take reward
     if ((messageParts.length == 2 && messageParts[1] == "reward")) {
         const infoAboutReward = moneyRecordDatabase.takeFreeMoneyReward(message.author.id)
-        const retIn = msToTime(infoAboutReward.nextRewardIn)
+        const retIn = msToTimeUpToHour(infoAboutReward.nextRewardIn)
         if (infoAboutReward.isSucessfullyTaken) {
             message.reply(`You have collected your reward <:Artjom_pog:973178773694455841>! Your new balance is ${moneyRecordDatabase.getCoinAmount(message.author.id)}. Return in ${retIn}`)
         } else {
@@ -154,7 +156,8 @@ client.on('messageCreate', message => {
             x.channel.messages.cache.delete(x.id);
             x.reactions.cache.clear()
             x.fetch().then(x => {
-                if (client.user != null && invitationParts.length == 4 && x.mentions.has(client.user.id) && invitationParts[1] == "duel" && isAccepterSame && isAmountSame && (x.reactions.resolve('👍')?.count == undefined || x.reactions.resolve('👍')?.count == 0)) {
+                if (client.user != null && invitationParts.length == 4 && x.mentions.has(client.user.id) &&
+                 invitationParts[1] == "duel" && isAccepterSame && isAmountSame && (x.reactions.resolve('👍')?.count == undefined || x.reactions.resolve('👍')?.count == 0)) {
                 
                     let gameAmount = Math.max(0, parseFloat(invitationParts[3]))
                     gameAmount = Math.min(gameAmount, moneyRecordDatabase.getCoinAmount(message.author.id), moneyRecordDatabase.getCoinAmount(x.author.id))
@@ -198,6 +201,9 @@ client.on('messageCreate', message => {
         infoMessage += `\`view polls\` - to view all polls\n`
         infoMessage += `\`resolve poll<pollid> opt<optionNumber>\` - to resolve a poll (Admin only)\n`
         infoMessage += `\`undo poll<pollid>\` - to undo a poll (Admin only)\n`
+        infoMessage += `\`lock poll<pollid>\` - to lock a poll (Admin only)\n`
+        infoMessage += `\`lock poll<pollid> <days> <hours> <minutes>\` - to lock a poll in some time (Admin only)\n`
+        infoMessage += `\`locksin poll<pollid>\` - to check when the poll will be locked\n`
         message.reply(infoMessage)
     }
 
@@ -224,7 +230,8 @@ client.on('messageCreate', message => {
     }
 
     //Place a bet
-    if (messageParts.length == 5 && messageParts[1] == "bet" && checkCorrectPollFormat(messageParts[2]) && checkCorrectOptionFormat(messageParts[3]) && checkStringIsPositiveNumber(messageParts[4])) {
+    if (messageParts.length == 5 && messageParts[1] == "bet" && checkCorrectPollFormat(messageParts[2])
+     && checkCorrectOptionFormat(messageParts[3]) && checkStringIsPositiveNumber(messageParts[4])) {
         const betAmount = Math.min(moneyRecordDatabase.getCoinAmount(message.author.id), parseFloat(messageParts[4]))
         const pollId = parseInt(messageParts[2].slice(4, undefined))
         const pollOption = parseInt(messageParts[3].slice(3, undefined))
@@ -268,7 +275,7 @@ client.on('messageCreate', message => {
             } else if (x.pollStatus == "LOCKED") {
                 openMessage = "Closed for bets"
             } else if (x.pollStatus == "CLOSED") {
-                openMessage = "HasAlreadyResolved"
+                openMessage = "Has already resolved"
             }
             toSend += `\n${counter}. \`${x.question}\` -> Poll **${x.pollId}** ${openMessage}`
             counter ++
@@ -278,7 +285,8 @@ client.on('messageCreate', message => {
     }
 
     //Resolve a poll
-    if (messageParts.length == 4 && messageParts[1] == "resolve"  && checkCorrectPollFormat(messageParts[2]) && checkCorrectOptionFormat(messageParts[3])&& checkUserIsOwnerValidator(message.author.id)) {
+    if (messageParts.length == 4 && messageParts[1] == "resolve"  && checkCorrectPollFormat(messageParts[2])
+     && checkCorrectOptionFormat(messageParts[3])&& checkUserIsOwnerValidator(message.author.id)) {
         const pollId = parseInt(messageParts[2].slice(4, undefined))
         const pollOption = parseInt(messageParts[3].slice(3, undefined))
         const pollFound = pollsRightNow.find(x => x.pollId == pollId)
@@ -312,7 +320,22 @@ client.on('messageCreate', message => {
         message.channel.send(toSend)
     }
 
-    //Lock a poll
+    //Lock a poll in some time
+    if (messageParts.length == 6 && messageParts[1] == "lock" && checkCorrectPollFormat(messageParts[2]) && checkUserIsOwnerValidator(message.author.id) &&
+    isInteger(messageParts[3]) && isInteger(messageParts[4]) && isInteger(messageParts[5])) {
+        const pollId = parseInt(messageParts[2].slice(4, undefined))
+        const pollFound = pollsRightNow.find(x => x.pollId == pollId)
+        if (pollFound == undefined) {
+            return 
+        }
+        const days = parseInt(messageParts[3])
+        const hours = parseInt(messageParts[4])
+        const minutes = parseInt(messageParts[5])
+        pollFound.lockInTime(days, hours, minutes)
+        message.react("👍")
+    }
+
+    //Lock a poll 
     if (messageParts.length == 3 && messageParts[1] == "lock" && checkCorrectPollFormat(messageParts[2]) && checkUserIsOwnerValidator(message.author.id)) {
         const pollId = parseInt(messageParts[2].slice(4, undefined))
         const pollFound = pollsRightNow.find(x => x.pollId == pollId)
@@ -326,6 +349,24 @@ client.on('messageCreate', message => {
         const totalAmount = pollFound.getTotalPollAmount()
         toSend = appendVotesPerPollOption(toSend, optionNames, votesPerOption, totalAmount)
         message.channel.send(toSend)
+    }
+
+    //Check when pool is locked
+    if (messageParts.length == 3 && messageParts[1] == "locksin" && checkCorrectPollFormat(messageParts[2])) {
+        const pollId = parseInt(messageParts[2].slice(4, undefined))
+        const pollFound = pollsRightNow.find(x => x.pollId == pollId)
+        if (pollFound == undefined) {
+            return 
+        }
+        if (pollFound.pollStatus == "LOCKED" || pollFound.pollStatus == "CLOSED") {
+            message.reply(`Poll \`${pollFound.question}\` is already locked`)
+        } else if (pollFound.toBeLockedAt == undefined) {
+            message.reply(`Poll \`${pollFound.question}\` does not have a concrete locking time`)
+        } else {
+            const timeToClose = pollFound.toBeLockedAt - Date.now();
+            const timeAsString = msToTimeUpToDay(timeToClose)
+            message.reply(`Poll \`${pollFound.question}\` closes in ${timeAsString}`)
+        }
     }
 
 })
@@ -367,13 +408,28 @@ function addSpacesToMakePrettierDisplayingBetPercentages(questions: string[], sp
      return questions.map(x => (spacesAfterMax + Math.floor((maxLengthOfStrings - x.length)*11/5)))
 }
 
-function msToTime(duration: number): string {
-    const milliseconds = Math.floor((duration % 1000) / 100)
+function msToTimeUpToHour(duration: number): string {
     const seconds = Math.floor((duration / 1000) % 60)
     const minutes = Math.floor((duration / (1000 * 60)) % 60)
     const hours = Math.floor((duration / (1000 * 60 * 60)) % 24);
 
     return `${hours} hours ${minutes} minutes ${seconds} seconds `;
+}
+
+function isInteger(toCheck: string): boolean {
+    return !isNaN(parseInt(toCheck))
+}
+
+function isFloat(toCheck: string): boolean {
+   return !isNaN(parseFloat(toCheck))
+}
+
+function msToTimeUpToDay(duration: number): string {
+    const seconds = Math.floor((duration / 1000) % 60)
+    const minutes = Math.floor((duration / (1000 * 60)) % 60)
+    const hours = Math.floor((duration / (1000 * 60 * 60)) % 24);
+    const days = Math.floor((duration / (1000 * 60 * 60 * 24)));
+    return `${days} days ${hours} hours ${minutes} minutes ${seconds} seconds `;
 }
 
 function roundToTwoDecimals(toRound: number): number {

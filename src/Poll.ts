@@ -8,6 +8,7 @@ export class Poll {
     static latestId = 1;
     pollStatus: string = "OPEN";
     winningOption: number = -1;
+    toBeLockedAt: number | undefined;
     constructor(optionNames: string[], question: string) {
         this.optionNames = optionNames
         this.question = question
@@ -15,14 +16,37 @@ export class Poll {
         Poll.latestId ++
     }
 
-    public static rebuildPollFromData(optionNames: string[], question: string, bets: Bet[], pollId: number, pollStatus: string, winningOption: number) {
+    public static rebuildPollFromData(optionNames: string[], question: string, bets: Bet[], pollId: number, pollStatus: string, winningOption: number, toBeLockedAt: number | undefined) {
         const toRet = new Poll(optionNames, question)
         Poll.latestId --;
         toRet.bets = bets;
         toRet.pollId = pollId;
         toRet.pollStatus = pollStatus
         toRet.winningOption = winningOption
+        toRet.toBeLockedAt = toBeLockedAt
         return toRet
+    }
+
+    public static setToBeLockedAllInTime(polls: Poll[]) {
+        polls.forEach(x => this.lockOneInTime(x))
+    }
+
+    private static lockOneInTime(poll: Poll) {
+        if (poll.toBeLockedAt == undefined) {
+            return
+        }
+        if (poll.toBeLockedAt != undefined) {
+            setTimeout(() => {
+                poll.markAsLocked();
+                poll.toBeLockedAt = undefined;
+            }, poll.toBeLockedAt - Date.now());
+        }
+    }
+
+    public lockInTime(days: number, hours: number, minutes: number) {
+        const toLockIn = days * 86400000 + hours * 3600000 + minutes * 60000
+        this.toBeLockedAt = toLockIn + Date.now()
+        Poll.lockOneInTime(this)
     }
 
     public makeABet(bet: Bet) {
@@ -119,7 +143,7 @@ public static writePollsToFile(filePath: string, polls:Poll[]) {
 public static readPollsFromFile(filePath: string): Poll[] {
     const data = JSON.parse(readFileSync(filePath, 'utf-8')) as Poll[]
     const parsed_data = data.map(x => {
-        let record = Poll.rebuildPollFromData(x.optionNames, x.question, x.bets, x.pollId, x.pollStatus, x.winningOption)
+        let record = Poll.rebuildPollFromData(x.optionNames, x.question, x.bets, x.pollId, x.pollStatus, x.winningOption, x.toBeLockedAt)
         record.bets = record.bets.map(x => new Bet(x.option, x.amount, x.user))
         return record
     })
