@@ -160,7 +160,7 @@ client.on('messageCreate', message => {
                  invitationParts[1] == "duel" && isAccepterSame && isAmountSame && (x.reactions.resolve('👍')?.count == undefined || x.reactions.resolve('👍')?.count == 0)) {
                 
                     let gameAmount = Math.max(0, parseFloat(invitationParts[3]))
-                    gameAmount = Math.min(gameAmount, moneyRecordDatabase.getCoinAmount(message.author.id), moneyRecordDatabase.getCoinAmount(x.author.id))
+                    gameAmount = Math.min(gameAmount, Math.max(moneyRecordDatabase.getCoinAmount(message.author.id), 0), Math.max(moneyRecordDatabase.getCoinAmount(x.author.id), 0))
                     let result = new DuelManager().battle(message.author.id, x.author.id, gameAmount)
                     if (result.outcomeCode == 1) {
                         moneyRecordDatabase.addCoinsBypassOwnerCheck(message.author.id, gameAmount)
@@ -232,7 +232,7 @@ client.on('messageCreate', message => {
     //Place a bet
     if (messageParts.length == 5 && messageParts[1] == "bet" && checkCorrectPollFormat(messageParts[2])
      && checkCorrectOptionFormat(messageParts[3]) && checkStringIsPositiveNumber(messageParts[4])) {
-        const betAmount = Math.min(moneyRecordDatabase.getCoinAmount(message.author.id), parseFloat(messageParts[4]))
+        const betAmount = Math.min(Math.max(moneyRecordDatabase.getCoinAmount(message.author.id), 0), parseFloat(messageParts[4]))
         const pollId = parseInt(messageParts[2].slice(4, undefined))
         const pollOption = parseInt(messageParts[3].slice(3, undefined))
         const pollFound = pollsRightNow.find(x => x.pollId == pollId)

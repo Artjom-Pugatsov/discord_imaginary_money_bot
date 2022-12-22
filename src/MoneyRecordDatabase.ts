@@ -119,7 +119,8 @@ export class MoneyRecordDatabase{
         if ( fromFound == undefined || toFound == undefined) {
             return 0
         } else {
-            const toTransfer = Math.min(fromFound.currentBalance, amount)
+            let toTransfer = Math.min(fromFound.currentBalance, amount)
+            toTransfer = Math.max(0, toTransfer)
             toFound.currentBalance += toTransfer
             fromFound.currentBalance -= toTransfer
             return toTransfer
