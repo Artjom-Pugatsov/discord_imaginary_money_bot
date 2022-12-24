@@ -72,7 +72,7 @@ client.on('messageCreate', message => {
         return
     }
     const messageParts = message.content.split(" ").map(x => x.toLowerCase())
-    if (!(client.user?.id != null && message.mentions.has(client.user.id))) {
+    if ((client.user == null ||( !message.mentions.has(client.user)) && (messageParts.length < 1 && messageParts[0] != process.env.BOTCOMMAND))) {
         return
     }
     //Mathing cases for bot actions
@@ -150,6 +150,9 @@ client.on('messageCreate', message => {
             }
             const originalBattleInvetation = x.content
             const invitationParts = originalBattleInvetation.split(" ").map(x => x.toLowerCase())
+            if (invitationParts.length != 4) {
+                return 
+            }
             const isAccepterSame = message.author.id == getUserId(invitationParts[2])
             const isAmountSame = !isNaN(parseFloat(invitationParts[3])) && parseFloat(invitationParts[3]) == parseFloat(messageParts[2])
             //The cache has to be cleared, because otherwise not all reactions show-up
