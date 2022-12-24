@@ -159,9 +159,9 @@ client.on('messageCreate', message => {
             x.channel.messages.cache.delete(x.id);
             x.reactions.cache.clear()
             x.fetch().then(x => {
-                if (client.user != null && invitationParts.length == 4 && x.mentions.has(client.user.id) &&
+                if (client.user != null && invitationParts.length == 4 &&
                  invitationParts[1] == "duel" && isAccepterSame && isAmountSame && (x.reactions.resolve('👍')?.count == undefined || x.reactions.resolve('👍')?.count == 0)) {
-                
+                    
                     let gameAmount = Math.max(0, parseFloat(invitationParts[3]))
                     gameAmount = Math.min(gameAmount, Math.max(moneyRecordDatabase.getCoinAmount(message.author.id), 0), Math.max(moneyRecordDatabase.getCoinAmount(x.author.id), 0))
                     let result = new DuelManager().battle(message.author.id, x.author.id, gameAmount)
@@ -175,7 +175,7 @@ client.on('messageCreate', message => {
                     result.outcomeText += ` <@${x.author.id}>'s balance is now ${moneyRecordDatabase.getCoinAmount(x.author.id)} and <@${message.author.id}>'s balance is now ${moneyRecordDatabase.getCoinAmount(message.author.id)}`
                     message.reply(result.outcomeText)
                     x.react("👍")
-                }
+                } 
             }
             )
             
