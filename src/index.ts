@@ -184,29 +184,29 @@ client.on('messageCreate', message => {
 
     //Initiate the duel
     if (messageParts.length == 4 && messageParts[1] == "duel" && userInServerValidator(getUserId(messageParts[2])) && !isNaN(parseFloat(messageParts[3]))) {
-        message.reply(`<@${getUserId(messageParts[2])}>, you have been challanged to a duel. Reply to the original message with : \"<@${client.user.id}> accept ${messageParts[3]}\" to accept the duel`)
+        message.reply(`<@${getUserId(messageParts[2])}>, you have been challanged to a duel. Reply to the original message with : \`${process.env.BOTCOMMAND} accept ${messageParts[3]}\` to accept the duel`)
     }
 
     //Get list of possible commands
     if (messageParts.length == 2 && messageParts[1] == "help") {
         
-        let infoMessage = `To use a command, please mention <@${client.user.id}> and then type one of the following commands:\n`
-        infoMessage += `\`reward\` - to collet your free money\n`
-        infoMessage += `\`help\` - to list the available commands\n`
-        infoMessage += `\`balance <user>\` - to check user's balance\n`
-        infoMessage += `\`top <x>\` - to see the top users by coins\n`
-        infoMessage += `\`transfer <user> <x>\` - to transfer x coins to the specified user\n`
-        infoMessage += `\`duel <user> <x>\` - to challange a user to a random duel by betting x coins\n`
+        let infoMessage = `To use the bot, type one of the following commands:\n`
+        infoMessage += `\`${process.env.BOTCOMMAND} reward\` - to collet your free money\n`
+        infoMessage += `\`${process.env.BOTCOMMAND} help\` - to list the available commands\n`
+        infoMessage += `\`${process.env.BOTCOMMAND} balance <user>\` - to check user's balance\n`
+        infoMessage += `\`${process.env.BOTCOMMAND} top <x>\` - to see the top users by coins\n`
+        infoMessage += `\`${process.env.BOTCOMMAND} transfer <user> <x>\` - to transfer x coins to the specified user\n`
+        infoMessage += `\`${process.env.BOTCOMMAND} duel <user> <x>\` - to challange a user to a random duel by betting x coins\n`
         infoMessage += `\nPoll commands:\n`
-        infoMessage += `\`add poll <name> <option1> <option2> ...\` - to add a poll\n`
-        infoMessage += `\`bet poll<pollid> opt<optionNumber> <x> \` - to place a bet of x in the poll\n`
-        infoMessage += `\`view bets poll<pollid>\` - to view all bets for a poll\n`
-        infoMessage += `\`view polls\` - to view all polls\n`
-        infoMessage += `\`resolve poll<pollid> opt<optionNumber>\` - to resolve a poll (Admin only)\n`
-        infoMessage += `\`undo poll<pollid>\` - to undo a poll (Admin only)\n`
-        infoMessage += `\`lock poll<pollid>\` - to lock a poll (Admin only)\n`
-        infoMessage += `\`lock poll<pollid> <days> <hours> <minutes>\` - to lock a poll in some time (Admin only)\n`
-        infoMessage += `\`locksin poll<pollid>\` - to check when the poll will be locked\n`
+        infoMessage += `\`${process.env.BOTCOMMAND} add poll <name> <option1> <option2> ...\` - to add a poll\n`
+        infoMessage += `\`${process.env.BOTCOMMAND} bet poll<pollid> opt<optionNumber> <x> \` - to place a bet of x in the poll\n`
+        infoMessage += `\`${process.env.BOTCOMMAND} view bets poll<pollid>\` - to view all bets for a poll\n`
+        infoMessage += `\`${process.env.BOTCOMMAND} view polls\` - to view all polls\n`
+        infoMessage += `\`${process.env.BOTCOMMAND} resolve poll<pollid> opt<optionNumber>\` - to resolve a poll (Admin only)\n`
+        infoMessage += `\`${process.env.BOTCOMMAND} undo poll<pollid>\` - to undo a poll (Admin only)\n`
+        infoMessage += `\`${process.env.BOTCOMMAND} lock poll<pollid>\` - to lock a poll (Admin only)\n`
+        infoMessage += `\`${process.env.BOTCOMMAND} lock poll<pollid> <days> <hours> <minutes>\` - to lock a poll in some time (Admin only)\n`
+        infoMessage += `\`${process.env.BOTCOMMAND} locksin poll<pollid>\` - to check when the poll will be locked\n`
         message.reply(infoMessage)
     }
 
