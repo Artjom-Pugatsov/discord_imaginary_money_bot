@@ -1,4 +1,4 @@
-import { Client,  GatewayIntentBits, MessageType} from "discord.js";
+import { Client,  GatewayIntentBits, MessageType, PermissionsBitField } from "discord.js";
 import {CheckUserInServer, CheckUserIsOwner} from "src/ServerValidator";
 require("dotenv/config")
 import {MoneyRecord} from "./Record"
@@ -69,6 +69,7 @@ client.on('ready', () =>{
 client.on('messageCreate', message => {
     console.log(message.content);
     if (message.author.bot) {
+        console.log(message?.member?.permissions.has(PermissionsBitField.Flags.ManageNicknames));
         return
     }
     const messageParts = message.content.split(" ").map(x => x.toLowerCase())
@@ -197,6 +198,7 @@ client.on('messageCreate', message => {
         infoMessage += `\`${process.env.BOTCOMMAND} top <x>\` - to see the top users by coins\n`
         infoMessage += `\`${process.env.BOTCOMMAND} transfer <user> <x>\` - to transfer x coins to the specified user\n`
         infoMessage += `\`${process.env.BOTCOMMAND} duel <user> <x>\` - to challange a user to a random duel by betting x coins\n`
+        infoMessage += `\`${process.env.BOTCOMMAND} check shop\` - to view what can be bought in the shop\n`
         infoMessage += `\nPoll commands:\n`
         infoMessage += `\`${process.env.BOTCOMMAND} add poll <name> <option1> <option2> ...\` - to add a poll\n`
         infoMessage += `\`${process.env.BOTCOMMAND} bet poll<pollid> opt<optionNumber> <x> \` - to place a bet of x in the poll\n`
@@ -372,6 +374,104 @@ client.on('messageCreate', message => {
         }
     }
 
+    //View shop
+    if (messageParts.length == 3 && messageParts[1] == "check" && messageParts[2] == "shop") {
+        let infoMessage = `The shop has the following options:\n`
+        infoMessage += `\`${process.env.BOTCOMMAND} buy give role <user>\` - assign a special role to the user (even  yourself) - ${process.env.GET_ROLE_PRICE} coins\n`
+        infoMessage += `\`${process.env.BOTCOMMAND} buy remove role <user>\` - remove a special role to the user (even  yourself) - ${process.env.REMOVE_ROLE_PRICE} coins\n`
+        infoMessage += `\`${process.env.BOTCOMMAND} buy increase reward\` - to increse the reward amount by ${process.env.INCREASE_REWARD_AMOUNT} (max ${process.env.MAX_PURCHASE_INCREASE_REWARD} times) - ${process.env.INCREASE_REWARD_PRICE} coins\n`
+        infoMessage += `\`${process.env.BOTCOMMAND} buy reduce wait time\` - to reduce the wait time for next reward by ${parseIntElseZero(process.env.REDUCE_WAIT_TIME_DURATION) / 60000} minutes (max ${process.env.MAX_REDUCE_WAIT_TIME} times) - ${process.env.REDUCE_WAIT_TIME_PRICE} coins\n`
+        infoMessage += `\`${process.env.BOTCOMMAND} buy admin sing karaoke\` - to make the administrator perform karaoke of a chosen song (max 210 seconds) - ${process.env.ORDER_KARAOKE_PRICE} coins\n`
+        infoMessage += `\`${process.env.BOTCOMMAND} buy rename <user> <toRenameAs>\` - to rename the user however you want (administrator can ban for inappropriate names) - ${process.env.RENAME_USERNAME_PRICE} coins\n`
+        message.reply(infoMessage)
+    }
+
+    //Buying stuff
+    if (messageParts.length > 2 && messageParts[1] == "buy") {
+        const buyer = message.author.id;
+        let isEnoughMoneyOnBalance = false
+        let maxReached = false
+        //Giving a special role
+        if (messageParts.length == 5 && messageParts[2] == "give" && messageParts[3] == "role" && userInServerValidator(getUserId(messageParts[4]))) {
+            if (moneyRecordDatabase.doesUserHaveEnoughCoins(buyer, parseIntElseZero(process.env.GET_ROLE_PRICE))) {
+                isEnoughMoneyOnBalance = true;
+                let affectedUser;
+                if (message.guild !== null) {
+                    affectedUser = message.guild.members.cache.get(getUserId(messageParts[4]))
+                    console.log(affectedUser)
+                    const role= affectedUser?.guild.roles.cache.find(role => role.name === process.env.SPECIAL_REWARD_ROLE_NAME);
+                    console.log(role)
+                    if (role != undefined) {
+                       affectedUser?.roles.add(role); 
+                       moneyRecordDatabase.addCoinsBypassOwnerCheck(buyer, -parseIntElseZero(process.env.GET_ROLE_PRICE))
+                    }
+                }
+            }
+            //Removing a special role
+        } else if (messageParts.length == 5 && messageParts[2] == "remove" && messageParts[3] == "role" && userInServerValidator(getUserId(messageParts[4]))) {
+            if (moneyRecordDatabase.doesUserHaveEnoughCoins(buyer, parseIntElseZero(process.env.REMOVE_ROLE_PRICE))) {
+                isEnoughMoneyOnBalance = true;
+                let affectedUser;
+                if (message.guild !== null) {
+                    affectedUser = message.guild.members.cache.get((getUserId(messageParts[4])))
+                    const role= affectedUser?.guild.roles.cache.find(role => role.name === process.env.SPECIAL_REWARD_ROLE_NAME);
+                    if (role != undefined) {
+                       affectedUser?.roles.remove(role); 
+                       moneyRecordDatabase.addCoinsBypassOwnerCheck(buyer, -parseIntElseZero(process.env.REMOVE_ROLE_PRICE))
+                    }
+                }            }
+            //Increasing reward
+        } else if (messageParts.length == 4 && messageParts[2] == "increase" && messageParts[3] == "reward") {
+            if (moneyRecordDatabase.doesUserHaveEnoughCoins(buyer, parseIntElseZero(process.env.INCREASE_REWARD_PRICE))) {
+                isEnoughMoneyOnBalance = true;
+                if (moneyRecordDatabase.purchaseRewardIncrease(buyer)) {
+                    moneyRecordDatabase.addCoinsBypassOwnerCheck(buyer, -parseIntElseZero(process.env.INCREASE_REWARD_PRICE))
+                } else {
+                    maxReached = true
+                }
+            }
+
+            //Reduce wait time
+        } else if (messageParts.length == 5 && messageParts[2] == "reduce" && messageParts[3] == "wait" && messageParts[4] == "time") {
+            if (moneyRecordDatabase.doesUserHaveEnoughCoins(buyer, parseIntElseZero(process.env.REDUCE_WAIT_TIME_PRICE))) {
+                isEnoughMoneyOnBalance = true;
+                if (moneyRecordDatabase.purchaseWaitTimeDecrease(buyer)) {
+                    moneyRecordDatabase.addCoinsBypassOwnerCheck(buyer, -parseIntElseZero(process.env.REDUCE_WAIT_TIME_PRICE))
+                } else {
+                    maxReached = true
+                }
+            }
+            //Karaoke
+        } else if (messageParts.length == 5 && messageParts[2] == "admin" && messageParts[3] == "sing" && messageParts[4] == "karaoke") {
+            if (moneyRecordDatabase.doesUserHaveEnoughCoins(buyer, parseIntElseZero(process.env.ORDER_KARAOKE_PRICE))) {
+                isEnoughMoneyOnBalance = true;
+                message.reply("You have successfully purchased karaoke, please message the admin!")
+                moneyRecordDatabase.addCoinsBypassOwnerCheck(buyer, -parseIntElseZero(process.env.ORDER_KARAOKE_PRICE))
+            }
+
+            //Rename a user
+        } else if (messageParts.length == 5 && messageParts[2] == "rename" && userInServerValidator(getUserId(messageParts[3]))) {
+            if (moneyRecordDatabase.doesUserHaveEnoughCoins(buyer, parseIntElseZero(process.env.RENAME_USERNAME_PRICE))) {
+                isEnoughMoneyOnBalance = true;
+                let affectedUser;
+                if (message.guild !== null) {
+                    affectedUser = message.guild.members.cache.get(getUserId(messageParts[3]))
+                    affectedUser?.setNickname(messageParts[4]);
+                    moneyRecordDatabase.addCoinsBypassOwnerCheck(buyer, -parseIntElseZero(process.env.RENAME_USERNAME_PRICE))
+                }  
+            }
+        }
+        if (!isEnoughMoneyOnBalance) {
+            message.reply("Sorry, you don't have enough coins to purchase that")
+        } else if (maxReached) {
+            message.reply("You have reached max number of upgrades")
+        } else {
+            message.react("👍")
+        }
+
+
+    }
+
 })
 
 function checkStringIsPositiveNumber(potentialNumber: string): boolean {
@@ -421,6 +521,17 @@ function msToTimeUpToHour(duration: number): string {
 
 function isInteger(toCheck: string): boolean {
     return !isNaN(parseInt(toCheck))
+}
+
+function parseIntElseZero(toParse: string | undefined): number {
+    if (toParse === undefined) {
+        return 0
+    }
+    if (isInteger(toParse)) {
+        return parseInt(toParse)
+    } else {
+        return Math.round(parseFloat(toParse))
+    }
 }
 
 function isFloat(toCheck: string): boolean {

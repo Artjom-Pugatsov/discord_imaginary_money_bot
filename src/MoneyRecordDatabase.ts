@@ -28,14 +28,21 @@ export class MoneyRecordDatabase{
         }
         const envRewardAmount = parseInt(process.env.REWARDAMOUNT || '')
         const RewardAmount = Number.isInteger(envRewardAmount) ? envRewardAmount : 10
+        const envAddRewardAmount = parseInt(process.env.INCREASE_REWARD_AMOUNT || '')
+        const addRewardAmount = Number.isInteger(envAddRewardAmount) ? envAddRewardAmount : 0
+        const envTimeToNextRewardReduced = parseInt(process.env.REDUCE_WAIT_TIME_DURATION || '')
+        const timeToNextRewardReduced = Number.isInteger(envTimeToNextRewardReduced) ? envTimeToNextRewardReduced : 0
         const envTimeToNextReward = parseInt(process.env.REWARDPERIOD || '')
-        const timeToNextReward = Number.isInteger(envTimeToNextReward) ? envTimeToNextReward : 7200000
+        let timeToNextReward = Number.isInteger(envTimeToNextReward) ? envTimeToNextReward : 7200000
+        console.log(userFound.reduceRewardWaitTimePurchased)
+        console.log(timeToNextRewardReduced)
+        timeToNextReward = timeToNextReward - (userFound.reduceRewardWaitTimePurchased * timeToNextRewardReduced)
         if (timeRighNow - userFound.lastTimeFreeRewardTaken >  timeToNextReward) {
-            userFound.currentBalance += RewardAmount
+            userFound.currentBalance += (RewardAmount + userFound.increaseRewardPurchased * addRewardAmount)
             userFound.lastTimeFreeRewardTaken = timeRighNow
             return new freeMoneyRewardData(true, timeToNextReward)
         } else {
-            return new freeMoneyRewardData(false, timeToNextReward - (timeRighNow - userFound.lastTimeFreeRewardTaken))
+            return new freeMoneyRewardData(false, timeToNextReward -(timeRighNow - userFound.lastTimeFreeRewardTaken))
         }
     }
 
@@ -43,7 +50,13 @@ export class MoneyRecordDatabase{
 
         const data = JSON.parse(readFileSync(filepath, 'utf-8')) as MoneyRecord[]
         const parsed_data = data.map(x => {
-            let record = new MoneyRecord(x.userId, x.currentBalance)
+            if (x.increaseRewardPurchased == undefined) {
+                x.increaseRewardPurchased = 0
+            }
+            if (x.reduceRewardWaitTimePurchased == undefined) {
+                x.reduceRewardWaitTimePurchased = 0
+            }
+            let record = new MoneyRecord(x.userId, x.currentBalance, x.increaseRewardPurchased, x.reduceRewardWaitTimePurchased)
             record.lastTimeFreeRewardTaken = x.lastTimeFreeRewardTaken
             return record
         })
@@ -54,7 +67,7 @@ export class MoneyRecordDatabase{
 
     addUserIfNotExistsAndInServer(userId: string){
         if (this.recordBook.find(x => x.userId == userId) === undefined && this.checkUserOnServer(userId)) {
-            this.recordBook.push(new MoneyRecord(userId, 0))
+            this.recordBook.push(new MoneyRecord(userId, 0, 0, 0))
         }
     }
 
@@ -105,6 +118,30 @@ export class MoneyRecordDatabase{
         return 0
     }
 
+    public purchaseWaitTimeDecrease(userId: string): boolean {
+        this.addUserIfNotExistsAndInServer(userId)
+        const userFound = this.recordBook.find(x => x.userId == userId)
+        if (userFound != null && userFound != undefined) {
+            if (userFound.reduceRewardWaitTimePurchased < this.parseIntElseZero(process.env.MAX_REDUCE_WAIT_TIME)) {
+                userFound.reduceRewardWaitTimePurchased = userFound.reduceRewardWaitTimePurchased+ 1;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public purchaseRewardIncrease(userId: string): boolean {
+        this.addUserIfNotExistsAndInServer(userId)
+        const userFound = this.recordBook.find(x => x.userId == userId)
+        if (userFound != null && userFound != undefined) {
+            if (userFound.increaseRewardPurchased < this.parseIntElseZero(process.env.MAX_PURCHASE_INCREASE_REWARD)) {
+                userFound.increaseRewardPurchased = userFound.increaseRewardPurchased+ 1;
+                return true;
+            }
+        }
+        return false;
+    }
+
     public transferCoins(requastFormId: string, from: string, to: string, amount:number): number {
         if (requastFormId != from) {
             return 0
@@ -135,11 +172,29 @@ export class MoneyRecordDatabase{
         return 0
     }
 
+    public doesUserHaveEnoughCoins(userId: string, amount: number): boolean {
+        console.log(this.getCoinAmount(userId))
+        console.log(amount)
+        return (this.getCoinAmount(userId) > amount)
+    }
+
     public getLeaderBordRangeFromHighest(numberOfTopToShow: number): MoneyRecord[] {
         const toShowNumber = Math.min(numberOfTopToShow, this.recordBook.length)
         const copyOfRecordBook = this.recordBook.map(x =>x)
         copyOfRecordBook.sort((a, b) => -( a.currentBalance - b.currentBalance))
         return copyOfRecordBook.slice(0, toShowNumber)
+    }
+
+
+    private parseIntElseZero(toParse: string | undefined): number {
+        if (toParse === undefined) {
+            return 0
+        }
+        if (!isNaN(parseInt(toParse))) {
+            return parseInt(toParse)
+        } else {
+            return Math.round(parseFloat(toParse))
+        }
     }
 
 }
