@@ -73,6 +73,7 @@ client.on('messageCreate', message => {
         return
     }
     const messageParts = message.content.split(" ").map(x => x.toLowerCase())
+    const messagePartsNotLowerCase = message.content.split(" ").map(x => x.toLowerCase())
     if ((client.user == null ||( !message.mentions.has(client.user)) && (messageParts.length < 1 && messageParts[0] != process.env.BOTCOMMAND))) {
         return
     }
@@ -456,7 +457,7 @@ client.on('messageCreate', message => {
                 let affectedUser;
                 if (message.guild !== null) {
                     affectedUser = message.guild.members.cache.get(getUserId(messageParts[3]))
-                    affectedUser?.setNickname(messageParts[4]);
+                    affectedUser?.setNickname(messagePartsNotLowerCase[4]);
                     moneyRecordDatabase.addCoinsBypassOwnerCheck(buyer, -parseIntElseZero(process.env.RENAME_USERNAME_PRICE))
                 }  
             }
